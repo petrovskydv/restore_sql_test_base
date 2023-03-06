@@ -30,26 +30,41 @@ ORDER BY bs.backup_finish_date DESC
     return backup_path, backup_finish_date
 
 
+def get_files_names(conn, source_db) -> list:
+    cursor = conn.cursor()
+
+    query = f'''
+SELECT name, physical_name FROM [{source_db}].[sys].[database_files]
+ORDER BY type
+    '''
+
+    cursor.execute(query)
+    logical_name_files = cursor.fetchall()
+
+    return logical_name_files
+
+
 def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None):
     cursor = conn.cursor()
 
     # устанавливаем режим автосохранения транзакций
     conn.autocommit = True
 
-    stats = 0
+    # получаем логические имена файлов и их пути для целевой базы
+    data_file, log_file = get_files_names(conn, restored_base_name)
+    data_file_name, data_file_path = data_file
+    log_file_name, log_file_path = log_file
 
-    # TODO получить пути к файлам в которые восстанавливать
-
-    # TODO получить логические имена файлов
+    no_recovery = 'NORECOVERY,' if dif_backup_path else ''
 
     script = f'''
     USE [master]
     ALTER DATABASE [{restored_base_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE
     RESTORE DATABASE [{restored_base_name}] FROM  
     DISK = N'{full_backup_path}' WITH  FILE = 1,  
-    MOVE N'S1v82_UppBuFmG' TO N'D:\\SQLDB\\test_uppbufmg.mdf',  
-    MOVE N'S1v82_UppBuFmG_log' TO N'D:\\SQLDB\\test_uppbufmg_log.ldf',  
-    NORECOVERY,  NOUNLOAD,  STATS = 5
+    MOVE N'{data_file_name}' TO N'{data_file_path}',  
+    MOVE N'{log_file_name}' TO N'{log_file_path}',  
+    {no_recovery}  NOUNLOAD,  STATS = 5
     '''
 
     diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
@@ -63,9 +78,6 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
 
     # получаем ответ от сервера SQL и оповещаем о статусе выполнения
     while cursor.nextset():
-        stats += 1
-        # if stats > 0:
-        # print(f'Выполненно {stats}% - {now_time()}')
         _, msg = cursor.messages[0]
         print(msg)
 
