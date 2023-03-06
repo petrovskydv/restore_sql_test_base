@@ -4,6 +4,10 @@ from enum import Enum
 
 import pyodbc
 
+SERVER_PORT = 1433,
+USER_NAME = 's1_SQL',
+PASSWORD = '5felcy8yes'
+
 
 class BackupType(Enum):
     full = 'D'
@@ -98,16 +102,16 @@ def get_connection(server_name, server_port, user_name, password):
 def main():
     prod_conn = get_connection(
         server_name='pg-1c-01',
-        server_port=1433,
-        user_name='s1_SQL',
-        password='5felcy8yes'
+        server_port=SERVER_PORT,
+        user_name=USER_NAME,
+        password=PASSWORD
     )
 
     test_server_conn = get_connection(
         server_name='pg-test-01',
-        server_port=1433,
-        user_name='s1_SQL',
-        password='5felcy8yes'
+        server_port=SERVER_PORT,
+        user_name=USER_NAME,
+        password=PASSWORD
     )
 
     source_db = 'S1v82_UppBuFmG'
