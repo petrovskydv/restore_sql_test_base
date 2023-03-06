@@ -1,12 +1,16 @@
+import argparse
 import datetime
+import logging
 import os
 from enum import Enum
 
 import pyodbc
 
-SERVER_PORT = 1433,
-USER_NAME = 's1_SQL',
+SERVER_PORT = 1433
+USER_NAME = 's1_SQL'
 PASSWORD = '5felcy8yes'
+
+logger = logging.getLogger(__name__)
 
 
 class BackupType(Enum):
@@ -15,6 +19,7 @@ class BackupType(Enum):
 
 
 def get_backup_path(conn, source_db, backup_type, backup_date):
+    logger.debug('get_backup_path')
     cursor = conn.cursor()
 
     backup_start_date = backup_date.strftime('%Y-%m-%d 00:00:00')
@@ -26,6 +31,8 @@ WHERE  (bs.database_name = N'{source_db}') AND (bs.type = '{backup_type.value}')
 AND (bs.backup_finish_date > CONVERT(DATETIME, '{backup_start_date}', 102))
 ORDER BY bs.backup_finish_date DESC
     '''
+
+    logger.debug(f'execute query {query}')
 
     cursor.execute(query)
 
@@ -49,6 +56,8 @@ ORDER BY type
 
 
 def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None):
+    logger.debug('restore_db')
+
     cursor = conn.cursor()
 
     # устанавливаем режим автосохранения транзакций
@@ -76,14 +85,14 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     if dif_backup_path:
         script = f'{script}{diff_script}'
 
-    print(script)
+    logger.debug(script)
 
     cursor.execute(script)
 
     # получаем ответ от сервера SQL и оповещаем о статусе выполнения
     while cursor.nextset():
         _, msg = cursor.messages[0]
-        print(msg)
+        logger.info(msg)
 
 
 def get_connection(server_name, server_port, user_name, password):
@@ -95,40 +104,59 @@ def get_connection(server_name, server_port, user_name, password):
     pw = f'PWD={password}'
 
     conn_str = ';'.join([driver, server, port, db, user, pw])
+    logger.debug(f'setup connection {conn_str}')
     base_conn = pyodbc.connect(conn_str)
     return base_conn
 
 
 def main():
-    prod_conn = get_connection(
-        server_name='pg-1c-01',
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    parser = argparse.ArgumentParser(description='Скрипт для перезаливки тестовой базы')
+    parser.add_argument('source_db', help='имя базы источника в SQL')
+    parser.add_argument('receiver_db', help='имя базы приемника в SQL')
+    parser.add_argument('--source_server', default='pg-1c-01', help='имя источника сервера SQL')
+    parser.add_argument('--receiver_server', default='pg-test-01', help='имя приемника сервера SQL')
+    parser.add_argument('-v', '--verbose', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO',
+                        help='logging level')
+    args = parser.parse_args()
+
+    source_conn = get_connection(
+        server_name=args.source_server,
         server_port=SERVER_PORT,
         user_name=USER_NAME,
         password=PASSWORD
     )
 
-    test_server_conn = get_connection(
-        server_name='pg-test-01',
+    receiver_conn = get_connection(
+        server_name=args.receiver_server,
         server_port=SERVER_PORT,
         user_name=USER_NAME,
         password=PASSWORD
     )
 
-    source_db = 'S1v82_UppBuFmG'
+    # source_db = 'S1v82_UppBuFmG'
+    source_db = args.source_db
 
-    full_backup_path, full_backup_date = get_backup_path(prod_conn, source_db, BackupType.full, datetime.datetime.now())
-    diff_backup_path, _ = get_backup_path(prod_conn, source_db, BackupType.diff, full_backup_date)
+    # TODO добавить проверку существования баз и серверов
+
+    full_backup_path, full_backup_date = get_backup_path(source_conn, source_db, BackupType.full,
+                                                         datetime.datetime.now())
+    diff_backup_path, _ = get_backup_path(source_conn, source_db, BackupType.diff, full_backup_date)
 
     if not os.path.exists(full_backup_path):
-        print(f'File does not exist {full_backup_path}')
+        logger.error(f'File does not exist {full_backup_path}')
         return
 
     if not os.path.exists(diff_backup_path):
-        print(f'File does not exist {diff_backup_path}')
+        logger.debug(f'File does not exist {diff_backup_path}')
         diff_backup_path = None
 
-    restored_db = 'test_uppbufmg'
-    restore_db(test_server_conn, restored_db, full_backup_path, diff_backup_path)
+    # restored_db = 'test_uppbufmg'
+    restored_db = args.receiver_db
+    restore_db(receiver_conn, restored_db, full_backup_path, diff_backup_path)
+
+    logger.info('DONE!')
 
 
 if __name__ == '__main__':
