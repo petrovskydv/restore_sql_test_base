@@ -50,10 +50,14 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     MOVE N'S1v82_UppBuFmG' TO N'D:\\SQLDB\\test_uppbufmg.mdf',  
     MOVE N'S1v82_UppBuFmG_log' TO N'D:\\SQLDB\\test_uppbufmg_log.ldf',  
     NORECOVERY,  NOUNLOAD,  STATS = 5
-    RESTORE DATABASE [{restored_base_name}] FROM  
-    DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5
     '''
-    # print(script)
+
+    diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
+
+    if dif_backup_path:
+        script = f'{script}{diff_script}'
+
+    print(script)
 
     cursor.execute(script)
 
@@ -98,10 +102,14 @@ def main():
 
     full_backup_path, full_backup_date = get_backup_path(prod_conn, source_db, BackupType.full, datetime.datetime.now())
     diff_backup_path, _ = get_backup_path(prod_conn, source_db, BackupType.diff, full_backup_date)
-    print(full_backup_path, full_backup_date)
-    print(diff_backup_path, _)
 
-    # TODO проверить что файлы существуют
+    if not os.path.exists(full_backup_path):
+        print(f'File does not exist {full_backup_path}')
+        return
+
+    if not os.path.exists(diff_backup_path):
+        print(f'File does not exist {diff_backup_path}')
+        diff_backup_path = None
 
     restored_db = 'test_uppbufmg'
     restore_db(test_server_conn, restored_db, full_backup_path, diff_backup_path)
