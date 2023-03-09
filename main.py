@@ -38,6 +38,8 @@ ORDER BY bs.backup_finish_date DESC
 
     backup_path, backup_finish_date = cursor.fetchone()
 
+    logger.debug(f'backup_path {backup_type}: {backup_path}')
+
     return backup_path, backup_finish_date
 
 
@@ -57,6 +59,7 @@ ORDER BY type
 
 def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None):
     logger.debug('restore_db')
+    logger.info('start restore BD')
 
     cursor = conn.cursor()
 
@@ -77,7 +80,7 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     DISK = N'{full_backup_path}' WITH  FILE = 1,  
     MOVE N'{data_file_name}' TO N'{data_file_path}',  
     MOVE N'{log_file_name}' TO N'{log_file_path}',  
-    {no_recovery}  NOUNLOAD,  STATS = 5
+    {no_recovery}  NOUNLOAD, REPLACE, STATS = 5
     '''
 
     diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
@@ -92,6 +95,7 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     # получаем ответ от сервера SQL и оповещаем о статусе выполнения
     while cursor.nextset():
         _, msg = cursor.messages[0]
+        msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
         logger.info(msg)
 
 
@@ -120,6 +124,8 @@ def main():
     parser.add_argument('-v', '--verbose', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG'], default='INFO',
                         help='logging level')
     args = parser.parse_args()
+
+    logger.setLevel(args.verbose)
 
     source_conn = get_connection(
         server_name=args.source_server,
@@ -154,7 +160,12 @@ def main():
 
     # restored_db = 'test_uppbufmg'
     restored_db = args.receiver_db
-    restore_db(receiver_conn, restored_db, full_backup_path, diff_backup_path)
+    try:
+        restore_db(receiver_conn, restored_db, full_backup_path, diff_backup_path)
+    except pyodbc.ProgrammingError as e:
+        logger.exception(e)
+        logger.info('Error')
+        return
 
     logger.info('DONE!')
 
