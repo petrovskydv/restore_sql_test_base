@@ -1,0 +1,2 @@
+pyodbc==4.0.35
+pydantic ==1.10.6

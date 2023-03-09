@@ -5,10 +5,7 @@ import os
 from enum import Enum
 
 import pyodbc
-
-SERVER_PORT = 1433
-USER_NAME = 's1_SQL'
-PASSWORD = '5felcy8yes'
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +13,19 @@ logger = logging.getLogger(__name__)
 class BackupType(Enum):
     full = 'D'
     diff = 'I'
+
+
+class DataBase(BaseModel):
+    driver: str = 'DRIVER={ODBC Driver 17 for SQL Server}'
+    server: str
+    port: int = 1433
+    db: str = 'master'
+    user: str = 's1_SQL'
+    pw: str = '5felcy8yes'
+
+    def get_connection_string(self):
+        return ';'.join([self.driver, f'SERVER={self.server}', f'PORT={self.port}', f'DATABASE={self.db}',
+                         f'UID={self.user}', f'PWD={self.pw}'])
 
 
 def get_backup_path(conn, source_db, backup_type, backup_date):
@@ -99,15 +109,8 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
         logger.info(msg)
 
 
-def get_connection(server_name, server_port, user_name, password):
-    driver = 'DRIVER={ODBC Driver 17 for SQL Server}'
-    server = f'SERVER={server_name}'
-    port = f'PORT={server_port}'
-    db = 'DATABASE=master'
-    user = f'UID={user_name}'
-    pw = f'PWD={password}'
-
-    conn_str = ';'.join([driver, server, port, db, user, pw])
+def get_connection(db: DataBase):
+    conn_str = db.get_connection_string()
     logger.debug(f'setup connection {conn_str}')
     base_conn = pyodbc.connect(conn_str)
     return base_conn
@@ -127,21 +130,8 @@ def main():
 
     logger.setLevel(args.verbose)
 
-    source_conn = get_connection(
-        server_name=args.source_server,
-        server_port=SERVER_PORT,
-        user_name=USER_NAME,
-        password=PASSWORD
-    )
+    source_conn = get_connection(DataBase(server=args.source_server))
 
-    receiver_conn = get_connection(
-        server_name=args.receiver_server,
-        server_port=SERVER_PORT,
-        user_name=USER_NAME,
-        password=PASSWORD
-    )
-
-    # source_db = 'S1v82_UppBuFmG'
     source_db = args.source_db
 
     # TODO добавить проверку существования баз и серверов
@@ -158,7 +148,7 @@ def main():
         logger.debug(f'File does not exist {diff_backup_path}')
         diff_backup_path = None
 
-    # restored_db = 'test_uppbufmg'
+    receiver_conn = get_connection(DataBase(server=args.receiver_server))
     restored_db = args.receiver_db
     try:
         restore_db(receiver_conn, restored_db, full_backup_path, diff_backup_path)
@@ -168,6 +158,9 @@ def main():
         return
 
     logger.info('DONE!')
+
+    receiver_conn.close()
+    source_conn.close()
 
 
 if __name__ == '__main__':
