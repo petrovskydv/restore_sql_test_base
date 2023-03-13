@@ -17,7 +17,7 @@ class BackupType(Enum):
     diff = 'I'
 
 
-class DataBase(BaseModel):
+class SQLServer(BaseModel):
     driver: str = 'DRIVER={ODBC Driver 17 for SQL Server}'
     server: str
     port: int = 1433
@@ -113,7 +113,7 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
 
 
 @contextmanager
-def get_connection(db: DataBase):
+def get_connection(db: SQLServer):
     conn_str = db.get_connection_string()
     logger.debug(f'setup connection {conn_str}')
     base_conn = None

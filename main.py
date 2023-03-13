@@ -5,7 +5,7 @@ import os
 
 import pyodbc
 
-from sql_tools import BackupFilesError, DataBase, get_backup_path, restore_db, get_connection, BackupType
+from sql_tools import BackupFilesError, SQLServer, get_backup_path, restore_db, get_connection, BackupType
 
 logger = logging.getLogger('db_restore')
 
@@ -30,7 +30,7 @@ def main():
     logger.setLevel(args.verbose)
 
     try:
-        with get_connection(DataBase(server=args.source_server)) as source_conn:
+        with get_connection(SQLServer(server=args.source_server)) as source_conn:
             full_backup_path, full_backup_date = get_backup_path(source_conn, args.source_db, BackupType.full,
                                                                  datetime.datetime.now())
             diff_backup_path, _ = get_backup_path(source_conn, args.source_db, BackupType.diff, full_backup_date)
@@ -50,7 +50,7 @@ def main():
         diff_backup_path = None
 
     try:
-        with get_connection(DataBase(server=args.receiver_server)) as receiver_conn:
+        with get_connection(SQLServer(server=args.receiver_server)) as receiver_conn:
             restore_db(receiver_conn, args.receiver_db, full_backup_path, diff_backup_path)
     except pyodbc.OperationalError:
         logger.error('Сервер приемник не найден или недоступен')
