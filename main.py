@@ -5,6 +5,7 @@ import os
 
 import pyodbc
 
+from rac_tools import get_infobase, BDInvalidName
 from sql_tools import BackupFilesError, SQLServer, get_backup_path, restore_db, get_connection, BackupType
 
 logger = logging.getLogger('db_restore')
@@ -28,12 +29,39 @@ def main():
     args = get_args()
 
     logger.setLevel(args.verbose)
+    logging.getLogger('rac_tools').setLevel(args.verbose)
 
     try:
-        with get_connection(SQLServer(server=args.source_server)) as source_conn:
-            full_backup_path, full_backup_date = get_backup_path(source_conn, args.source_db, BackupType.full,
+        logger.debug(args.source_db)
+        source_infobase = get_infobase(args.source_db)
+    except ChildProcessError as e:
+        logger.error(e)
+        return
+    except BDInvalidName as e:
+        logger.error(e)
+        return
+    except FileNotFoundError as e:
+        logger.error(e)
+        return
+
+    try:
+        receiver_infobase = get_infobase(args.receiver_db)
+    except ChildProcessError as e:
+        logger.error(e)
+        return
+    except BDInvalidName as e:
+        logger.error(e)
+        return
+    except FileNotFoundError as e:
+        logger.error(e)
+        return
+
+    try:
+        with get_connection(SQLServer(server=source_infobase.db_server)) as source_conn:
+            full_backup_path, full_backup_date = get_backup_path(source_conn, source_infobase.db_name, BackupType.full,
                                                                  datetime.datetime.now())
-            diff_backup_path, _ = get_backup_path(source_conn, args.source_db, BackupType.diff, full_backup_date)
+            diff_backup_path, _ = get_backup_path(source_conn, source_infobase.db_name, BackupType.diff,
+                                                  full_backup_date)
     except pyodbc.OperationalError:
         logger.error('Сервер источник не найден или недоступен')
         return
@@ -50,8 +78,8 @@ def main():
         diff_backup_path = None
 
     try:
-        with get_connection(SQLServer(server=args.receiver_server)) as receiver_conn:
-            restore_db(receiver_conn, args.receiver_db, full_backup_path, diff_backup_path)
+        with get_connection(SQLServer(server=receiver_infobase.db_server)) as receiver_conn:
+            restore_db(receiver_conn, receiver_infobase.db_name, full_backup_path, diff_backup_path)
     except pyodbc.OperationalError:
         logger.error('Сервер приемник не найден или недоступен')
         return
