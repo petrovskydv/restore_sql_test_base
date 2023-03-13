@@ -5,7 +5,7 @@ from enum import Enum
 import pyodbc
 from pydantic import BaseModel
 
-logger = logging.getLogger('db_restore')
+logger = logging.getLogger(__name__)
 
 
 class BackupFilesError(Exception):
