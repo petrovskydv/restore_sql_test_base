@@ -47,11 +47,13 @@ class Cluster1C:
         logger.debug(command)
         output = run_command(command)
         infobases = process_output(output, '')
-        return {ib['name']: ib['infobase'] for ib in infobases}
+        return {ib['name'].lower(): ib['infobase'] for ib in infobases}
 
     def get_infobase(self, infobase_name: str, username: str, pwd: str) -> InfoBase:
         self._get_cluster_id()
         infobases = self._get_infobases()
+        logger.debug(f'{infobases=}')
+        logger.debug(f'{infobase_name=}')
         ib_id = infobases.get(infobase_name)
         if not ib_id:
             raise BDInvalidName('Неверное имя базы 1с.')
@@ -110,16 +112,20 @@ def run_command(command):
     return output.split('\r\n')
 
 
+def get_infobase(con_str):
+    host_name, infobase_name = parse_infobase_connection_string(con_str)
+    cluster = Cluster1C(host_name, RacClient())
+    username = 'Петровский Денис'
+    user_pwd = '0850'
+    return cluster.get_infobase(infobase_name.lower(), username, user_pwd)
+
+
 def main():
     logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
     con_str = 'Srvr="pg-test-01";Ref="test_uppuusv";'
-    host_name, infobase_name = parse_infobase_connection_string(con_str)
-    cluster = Cluster1C(host_name, RacClient())
-    username = 'Петровский Денис Витальевич'
-    user_pwd = '0850'
     try:
-        infobase = cluster.get_infobase(infobase_name, username, user_pwd)
+        infobase = get_infobase(con_str)
         print(infobase)
         print(infobase.db_server, infobase.db_name)
     except ChildProcessError as e:
