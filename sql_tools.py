@@ -1,3 +1,5 @@
+import asyncio
+import datetime
 import logging
 from contextlib import contextmanager
 from enum import Enum
@@ -110,6 +112,52 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
         _, msg = cursor.messages[0]
         msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
         logger.info(msg)
+
+
+async def async_restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None, messages_queue=None):
+    logger.debug('restore_db')
+    logger.info('start restore BD')
+
+    cursor = conn.cursor()
+
+    # устанавливаем режим автосохранения транзакций
+    conn.autocommit = True
+
+    # получаем логические имена файлов и их пути для целевой базы
+    data_file, log_file = get_files_names(conn, restored_base_name)
+    data_file_name, data_file_path = data_file
+    log_file_name, log_file_path = log_file
+
+    no_recovery = 'NORECOVERY,' if dif_backup_path else ''
+
+    script = f'''
+    USE [master]
+    ALTER DATABASE [{restored_base_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE
+    RESTORE DATABASE [{restored_base_name}] FROM  
+    DISK = N'{full_backup_path}' WITH  FILE = 1,  
+    MOVE N'{data_file_name}' TO N'{data_file_path}',  
+    MOVE N'{log_file_name}' TO N'{log_file_path}',  
+    {no_recovery}  NOUNLOAD, REPLACE, STATS = 5
+    '''
+
+    diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
+
+    if dif_backup_path:
+        script = f'{script}{diff_script}'
+
+    logger.debug(script)
+
+    cursor.execute(script)
+
+    # получаем ответ от сервера SQL и оповещаем о статусе выполнения
+    while cursor.nextset():
+        _, msg = cursor.messages[0]
+        msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
+        logger.info(msg)
+        if messages_queue:
+            messages_queue.put_nowait(msg)
+            print(f'submit message: {msg}')
+            await asyncio.sleep(0)
 
 
 @contextmanager
