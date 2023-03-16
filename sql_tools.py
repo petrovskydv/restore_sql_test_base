@@ -30,7 +30,7 @@ class SQLServer(BaseModel):
                          f'UID={self.user}', f'PWD={self.pw}'])
 
 
-def get_backup_path(conn, source_db, backup_type, backup_date):
+def get_backup_path(conn, source_db, backup_type=BackupType.full, backup_date=datetime.datetime.now()):
     logger.debug('get_backup_path')
     cursor = conn.cursor()
 
