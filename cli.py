@@ -5,8 +5,8 @@ import os
 
 import pyodbc
 
-from rac_tools import get_infobase, BDInvalidName
-from sql_tools import BackupFilesError, SQLServer, get_backup_path, restore_db, get_connection, BackupType
+from services.rac_tools import get_infobase, BDInvalidName
+from services.sql_tools import BackupFilesError, SQLServer, get_backup_path, restore_db, get_connection, BackupType
 
 logger = logging.getLogger('db_restore')
 
