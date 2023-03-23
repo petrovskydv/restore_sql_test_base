@@ -36,7 +36,7 @@ async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    messages_queue = request.app['q']
+    messages_queue = Queue()
 
     async for msg in ws:
         logger.debug(f'{msg=}')
@@ -66,9 +66,6 @@ def main():
         web.get('/', handle),
         web.get('/ws', websocket_handler),
     ])
-
-    messages_queue = Queue()
-    app['q'] = messages_queue
 
     web.run_app(app, port=8888)
 
