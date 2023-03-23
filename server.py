@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from asyncio import Queue
@@ -54,6 +55,7 @@ async def websocket_handler(request):
             logger.error('ws connection closed with exception %s' % ws.exception())
 
     logger.debug('websocket connection closed')
+    return ws
 
 
 def main():

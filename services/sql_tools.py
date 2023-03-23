@@ -80,7 +80,7 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     # устанавливаем режим автосохранения транзакций
     conn.autocommit = True
 
-    script = prepare_sql_query_for_restore(conn, dif_backup_path, full_backup_path, restored_base_name)
+    script = prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, dif_backup_path)
 
     cursor.execute(script)
 
@@ -91,16 +91,12 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
         logger.info(msg)
 
 
-async def async_restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None, messages_queue=None):
+async def async_restore_db(conn, script, messages_queue=None):
     logger.info('start restore BD')
 
     cursor = conn.cursor()
-
     # устанавливаем режим автосохранения транзакций
     conn.autocommit = True
-
-    script = await prepare_sql_query_for_restore(conn, dif_backup_path, full_backup_path, restored_base_name)
-
     cursor.execute(script)
 
     # получаем ответ от сервера SQL и оповещаем о статусе выполнения
@@ -113,7 +109,7 @@ async def async_restore_db(conn, restored_base_name, full_backup_path, dif_backu
             await asyncio.sleep(0)
 
 
-async def prepare_sql_query_for_restore(conn, dif_backup_path, full_backup_path, restored_base_name):
+def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, dif_backup_path=None):
     # получаем логические имена файлов и их пути для целевой базы
     data_file, log_file = get_files_names(conn, restored_base_name)
     data_file_name, data_file_path = data_file
