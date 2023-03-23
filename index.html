@@ -1,0 +1,54 @@
+<!-- chat/templates/chat/room.html -->
+<!DOCTYPE html>
+<html>
+<head>
+<!--    <meta charset="utf-8"/>-->
+    <title>Restore database</title>
+</head>
+<body>
+    Source
+    <input id="source" type="text" size="100"><br>
+    Target
+    <input id="target" type="text" size="100"><br>
+    <input id="chat-message-submit" type="button" value="Start"><br>
+    <br><br>
+
+    <textarea id="chat-log" cols="100" rows="30"></textarea><br>
+
+
+</form>
+    <script>
+
+        const chatSocket = new WebSocket(
+            'ws://'
+            + window.location.host
+            + '/ws'
+        );
+
+        chatSocket.onmessage = function(e) {
+            const data = e.data;
+            document.querySelector('#chat-log').value += (data + '\n');
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
+
+        const StartButton = document.querySelector('#chat-message-submit')
+
+        StartButton.onclick = function(e) {
+            const SourceDom = document.querySelector('#source');
+            const TargetDom = document.querySelector('#target');
+            const message = {
+              'type': 'restore_db',
+              'source': SourceDom.value,
+              'target': TargetDom.value
+            }
+
+
+            chatSocket.send(JSON.stringify(message));
+            document.getElementById('chat-message-submit').disabled = true;
+        };
+    </script>
+</body>
+</html>

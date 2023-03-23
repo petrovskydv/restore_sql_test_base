@@ -1,88 +1,70 @@
-import asyncio
+import json
 import logging
 from asyncio import Queue
 from pathlib import Path
 
 import aiohttp
 from aiohttp import web
+from anyio import create_task_group
 
 from service import async_do_restore
 
 BASE_DIR = Path(__file__).resolve().parent
 
+logger = logging.getLogger(__name__)
+
 
 async def handle(request):
-    with open('index1.html', 'r') as f:
+    with open('index.html', 'r') as f:
         file = f.read()
 
-    return web.Response(body=file, headers={
-        'Content-Type': 'text/html',
-    })
+    return web.Response(body=file, headers={'Content-Type': 'text/html', })
 
 
-async def do_login(request):
-    data = await request.post()
-    login = data['login']
-    password = data['password']
-    # print(login, password)
-    # запуск восстановления базы с очередью
-
-    messages_queue = request.app['q']
-
-    # thread = Thread(target=do_restore, args=(login, messages_queue, password))
-    # asyncio.r
-    # func_call = functools.partial(asyncio.to_thread, do_restore, login, messages_queue, password)
-    # coro = asyncio.to_thread(do_restore, login, messages_queue, password)
-
-    # async with create_task_group() as tg:
-    #     tg.start_soon(func_call)
-    # asyncio.create_task(asyncio.to_thread(do_restore, login, messages_queue, password))
-    asyncio.create_task(async_do_restore(login, messages_queue, password))
-
-    with open('status.html', 'r') as f:
-        file = f.read()
-
-    return web.Response(body=file, headers={
-        'Content-Type': 'text/html',
-    })
+async def send_msg(messages_queue, ws):
+    while True:
+        try:
+            message = await messages_queue.get()
+            logger.debug(f'send msg to browser {message}')
+            await ws.send_str(message)
+        except ConnectionResetError:
+            logger.error('ConnectionResetError')
 
 
 async def websocket_handler(request):
-    print('websocket_handler')
+    logger.debug('start websocket')
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
     messages_queue = request.app['q']
-    await ws.send_str('START____')
-    while True:
-        message = await messages_queue.get()
-        print(f'get message______________{message}')
-        await ws.send_str(message)
-        print(f'send message______________{message}')
 
     async for msg in ws:
+        logger.debug(f'{msg=}')
         if msg.type == aiohttp.WSMsgType.TEXT:
             if msg.data == 'close':
                 await ws.close()
             else:
-                await ws.send_str(msg.data + '/answer')
+                msg = json.loads(msg.data)
+                if msg['type'] == 'restore_db':
+                    async with create_task_group() as tg:
+                        tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'])
+                        tg.start_soon(send_msg, messages_queue, ws)
+
         elif msg.type == aiohttp.WSMsgType.ERROR:
-            print('ws connection closed with exception %s' %
-                  ws.exception())
+            logger.error('ws connection closed with exception %s' % ws.exception())
 
-    print('websocket connection closed')
-
-    # return ws
+    logger.debug('websocket connection closed')
 
 
 def main():
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    rac_logger = logging.getLogger('rac_tools')
+    rac_logger.setLevel('INFO')
 
     app = web.Application()
     app.add_routes([
         web.get('/', handle),
         web.get('/ws', websocket_handler),
-        web.post('/status', do_login)
     ])
 
     messages_queue = Queue()

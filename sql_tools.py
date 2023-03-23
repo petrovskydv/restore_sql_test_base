@@ -115,7 +115,6 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
 
 
 async def async_restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None, messages_queue=None):
-    logger.debug('restore_db')
     logger.info('start restore BD')
 
     cursor = conn.cursor()
@@ -156,7 +155,6 @@ async def async_restore_db(conn, restored_base_name, full_backup_path, dif_backu
         logger.info(msg)
         if messages_queue:
             messages_queue.put_nowait(msg)
-            print(f'submit message: {msg}')
             await asyncio.sleep(0)
 
 
