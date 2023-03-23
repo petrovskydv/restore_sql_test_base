@@ -34,25 +34,14 @@ def main():
     try:
         logger.debug(args.source_db)
         source_infobase = get_infobase(args.source_db)
-    except ChildProcessError as e:
-        logger.error(e)
-        return
-    except BDInvalidName as e:
-        logger.error(e)
-        return
-    except FileNotFoundError as e:
+    except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return
 
+
     try:
         receiver_infobase = get_infobase(args.receiver_db)
-    except ChildProcessError as e:
-        logger.error(e)
-        return
-    except BDInvalidName as e:
-        logger.error(e)
-        return
-    except FileNotFoundError as e:
+    except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return
 
