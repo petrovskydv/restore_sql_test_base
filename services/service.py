@@ -3,8 +3,8 @@ import logging
 
 import pyodbc
 
-from rac_tools import get_infobase, BDInvalidName
-from sql_tools import get_connection, SQLServer, get_backup_path, BackupType, BackupFilesError, async_restore_db
+from services.rac_tools import get_infobase, BDInvalidName
+from services.sql_tools import get_connection, SQLServer, get_backup_path, BackupType, BackupFilesError, async_restore_db
 
 logger = logging.getLogger(__name__)
 

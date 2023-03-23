@@ -80,7 +80,7 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
     # устанавливаем режим автосохранения транзакций
     conn.autocommit = True
 
-    script = await prepare_sql_query_for_restore(conn, dif_backup_path, full_backup_path, restored_base_name)
+    script = prepare_sql_query_for_restore(conn, dif_backup_path, full_backup_path, restored_base_name)
 
     cursor.execute(script)
 
