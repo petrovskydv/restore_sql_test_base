@@ -24,6 +24,7 @@ class SQLServer(BaseModel):
     server: str
     port: int = 1433
     db: str = 'master'
+    # todo вынесите в настройки
     user: str = 's1_SQL'
     pw: str = '5felcy8yes'
 
@@ -89,24 +90,6 @@ def restore_db(conn, restored_base_name, full_backup_path, dif_backup_path=None)
         _, msg = cursor.messages[0]
         msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
         logger.info(msg)
-
-
-async def async_restore_db(conn, script, messages_queue=None):
-    logger.info('start restore BD')
-
-    cursor = conn.cursor()
-    # устанавливаем режим автосохранения транзакций
-    conn.autocommit = True
-    cursor.execute(script)
-
-    # получаем ответ от сервера SQL и оповещаем о статусе выполнения
-    while cursor.nextset():
-        _, msg = cursor.messages[0]
-        msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
-        logger.info(msg)
-        if messages_queue:
-            messages_queue.put_nowait(msg)
-            await asyncio.sleep(0)
 
 
 def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, dif_backup_path=None):

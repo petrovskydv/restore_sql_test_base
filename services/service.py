@@ -7,7 +7,7 @@ from anyio import to_thread
 from services.rac_tools import get_infobase, BDInvalidName
 from services.sql_tools import (
     get_connection, SQLServer, get_backup_path, BackupType, BackupFilesError,
-    prepare_sql_query_for_restore, async_restore_db
+    prepare_sql_query_for_restore
 )
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,17 @@ async def async_do_restore(source_path, messages_queue, target_path):
             messages_queue.put_nowait(f'Начало восстановления базы: {receiver_infobase.db_name}')
             logger.debug(f'submit message Начало восстановления базы: {receiver_infobase.db_name}')
             await asyncio.sleep(0)
-            await async_restore_db(receiver_conn, script, messages_queue)
+
+            cursor = receiver_conn.cursor()
+            # устанавливаем режим автосохранения транзакций
+            receiver_conn.autocommit = True
+            cursor.execute(script)
+            while True:
+                msg = await to_thread.run_sync(get_nextset, cursor)
+                if not msg:
+                    break
+                messages_queue.put_nowait(msg)
+                await asyncio.sleep(0)
 
         await asyncio.sleep(0)
     except pyodbc.OperationalError:
@@ -106,3 +116,14 @@ async def async_do_restore(source_path, messages_queue, target_path):
 
     messages_queue.put_nowait('DONE!')
     logger.info('DONE!')
+
+
+def get_nextset(cursor):
+    next_set = cursor.nextset()
+    if not next_set:
+        return
+
+    _, msg = cursor.messages[0]
+    msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
+    logger.info(msg)
+    return msg

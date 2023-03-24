@@ -115,7 +115,7 @@ def run_command(command):
 def get_infobase(con_str):
     host_name, infobase_name = parse_infobase_connection_string(con_str)
     cluster = Cluster1C(host_name, RacClient())
-    # todo вынести в переменные окружения
+    # todo вынести в настройки
     username = 'Петровский Денис'
     user_pwd = '0850'
     return cluster.get_infobase(infobase_name.lower(), username, user_pwd)
