@@ -51,7 +51,7 @@ ORDER BY bs.backup_finish_date DESC'''
     cursor.execute(query)
     response = cursor.fetchone()
 
-    if not response:
+    if not response and backup_type==BackupType.full:
         raise BackupFilesError
 
     backup_path, backup_finish_date = response

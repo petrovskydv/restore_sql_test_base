@@ -19,6 +19,7 @@ class InfoBase(BaseModel):
 
 
 class RacClient:
+    # todo предусмотреть смену версии платформы
     def __init__(self, exe_path=r'C:\Program Files (x86)\1cv8\8.3.19.1723\bin'):
         self.exe_path = exe_path
 
@@ -70,12 +71,15 @@ class Cluster1C:
         return f'--cluster={self.id}'
 
 
+# todo покрыть тестом
 def parse_infobase_connection_string(conn_string):
     server_name, infobase_name = re.findall(r'"([\w|\d|-]+)"', conn_string)
     logger.debug(f'{server_name=} {infobase_name=}')
     return server_name, infobase_name
 
 
+# todo покрыть тестом
+# todo перенести в RacClient
 def process_output(output, separator):
     objects = []
     is_new_object = True
@@ -96,6 +100,7 @@ def process_output(output, separator):
     return objects
 
 
+# todo перенести в RacClient
 def run_command(command):
     try:
         proc = sub.Popen(command, stdout=sub.PIPE, stderr=sub.PIPE)
@@ -112,6 +117,7 @@ def run_command(command):
     return output.split('\r\n')
 
 
+# todo перенести в сервисы
 def get_infobase(con_str):
     host_name, infobase_name = parse_infobase_connection_string(con_str)
     cluster = Cluster1C(host_name, RacClient())

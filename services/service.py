@@ -25,9 +25,11 @@ async def async_do_restore(source_path, messages_queue, target_path):
         messages_queue.put_nowait(f'база источник: {source_infobase}')
         logger.debug(f'submit message база источник: {source_infobase}')
         await asyncio.sleep(0)
-    except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
-        messages_queue.put_nowait(e)
+    except (ChildProcessError, BDInvalidName, FileNotFoundError, ValueError) as e:
+        messages_queue.put_nowait(str(e))
         logger.error(e)
+        msg = 'Операция прервана!'
+        messages_queue.put_nowait(msg)
         return
 
     messages_queue.put_nowait('Получение информации о базе приемнике')
@@ -40,6 +42,8 @@ async def async_do_restore(source_path, messages_queue, target_path):
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         messages_queue.put_nowait(e)
         logger.error(e)
+        msg = 'Операция прервана!'
+        messages_queue.put_nowait(msg)
         return
 
     try:
@@ -62,14 +66,15 @@ async def async_do_restore(source_path, messages_queue, target_path):
             )
             logger.debug(f'{full_backup_path=}')
             logger.debug(f'{diff_backup_path=}')
+            # todo добавить вывод даты и времени когда был сделан этот бекап
         await asyncio.sleep(0)
     except pyodbc.OperationalError:
-        msg = 'Сервер источник не найден или недоступен'
+        msg = 'Сервер источник не найден или недоступен. Операция прервана!'
         messages_queue.put_nowait(msg)
         logger.error(msg)
         return
     except BackupFilesError:
-        msg = 'Не удалось найти пути файлов бекапов'
+        msg = 'Не удалось найти пути файлов бекапов. Операция прервана!'
         messages_queue.put_nowait(msg)
         logger.error(msg)
         return
@@ -100,19 +105,20 @@ async def async_do_restore(source_path, messages_queue, target_path):
 
         await asyncio.sleep(0)
     except pyodbc.OperationalError:
-        msg = 'Сервер приемник не найден или недоступен'
+        msg = 'Сервер приемник не найден или недоступен. Операция прервана!'
         messages_queue.put_nowait(msg)
         logger.error(msg)
         return
     except pyodbc.ProgrammingError:
-        msg = 'БД приемник недоступна или не найдена'
+        msg = 'БД приемник недоступна или не найдена. Операция прервана!'
         messages_queue.put_nowait(msg)
         logger.error(msg)
         return
     except FileNotFoundError:
-        msg = 'Файлы бекапа не найдены на диске'
+        msg = 'Файлы бекапа не найдены на диске. Операция прервана!'
         messages_queue.put_nowait(msg)
         logger.error(msg)
+        return
 
     messages_queue.put_nowait('DONE!')
     logger.info('DONE!')
