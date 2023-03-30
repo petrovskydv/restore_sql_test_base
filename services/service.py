@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def async_do_restore(source_path, messages_queue, target_path):
     messages_queue.put_nowait('START!')
-    logger.debug(f'submit message START!')
+    logger.debug('submit message START!')
     await asyncio.sleep(0)
 
     messages_queue.put_nowait('Получение информации о базе источнике')

@@ -38,7 +38,6 @@ def main():
         logger.error(e)
         return
 
-
     try:
         receiver_infobase = get_infobase(args.receiver_db)
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:

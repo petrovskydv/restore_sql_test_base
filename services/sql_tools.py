@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import logging
 from contextlib import contextmanager
@@ -42,7 +41,7 @@ def get_backup_path(conn, source_db, backup_type=BackupType.full, backup_date=da
     query = f'''
 SELECT TOP (1) bmf.physical_device_name, bs.backup_finish_date
 FROM   msdb.dbo.backupset AS bs LEFT OUTER JOIN msdb.dbo.backupmediafamily AS bmf ON bs.media_set_id = bmf.media_set_id
-WHERE  (bs.database_name = N'{source_db}') AND (bs.type = '{backup_type.value}') 
+WHERE  (bs.database_name = N'{source_db}') AND (bs.type = '{backup_type.value}')
 AND (bs.backup_finish_date > CONVERT(DATETIME, '{backup_start_date}', 102))
 ORDER BY bs.backup_finish_date DESC'''
 
@@ -51,7 +50,7 @@ ORDER BY bs.backup_finish_date DESC'''
     cursor.execute(query)
     response = cursor.fetchone()
 
-    if not response and backup_type==BackupType.full:
+    if not response and backup_type == BackupType.full:
         raise BackupFilesError
 
     backup_path, backup_finish_date = response
@@ -103,14 +102,15 @@ def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, di
     script = f'''
     USE [master]
     ALTER DATABASE [{restored_base_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE
-    RESTORE DATABASE [{restored_base_name}] FROM  
-    DISK = N'{full_backup_path}' WITH  FILE = 1,  
-    MOVE N'{data_file_name}' TO N'{data_file_path}',  
-    MOVE N'{log_file_name}' TO N'{log_file_path}',  
+    RESTORE DATABASE [{restored_base_name}] FROM
+    DISK = N'{full_backup_path}' WITH  FILE = 1,
+    MOVE N'{data_file_name}' TO N'{data_file_path}',
+    MOVE N'{log_file_name}' TO N'{log_file_path}',
     {no_recovery}  NOUNLOAD, REPLACE, STATS = 5
     '''
 
-    diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
+    diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' " \
+                  f"WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
 
     if dif_backup_path:
         script = f'{script}{diff_script}'
