@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os.path
 from asyncio import Queue
 from pathlib import Path
 
@@ -16,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 
 async def handle(request):
-    with open('index.html', 'r') as f:
+    index_path = os.path.join(BASE_DIR, 'index.html')
+    with open(index_path, 'r') as f:
         file = f.read()
 
     return web.Response(body=file, headers={'Content-Type': 'text/html', })
