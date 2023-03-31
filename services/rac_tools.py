@@ -3,6 +3,7 @@ import re
 import subprocess as sub
 
 from pydantic import BaseModel, Field
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,7 @@ class Cluster1C:
         self.id = process_output(output, '')['cluster']
         logger.debug(f'cluster_id: {self.id}')
 
-    def _get_infobases(self) -> dict[str, str]:
+    def _get_infobases(self) -> Dict[str, str]:
         rac_method = f'infobase summary list {self._cluster_suffix}'
         command = self.rac_client.get_command(rac_method, self.host, self.port)
         logger.debug(command)
