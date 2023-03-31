@@ -21,11 +21,10 @@ class BackupType(Enum):
 class SQLServer(BaseModel):
     driver: str = 'DRIVER={ODBC Driver 17 for SQL Server}'
     server: str
+    user: str
+    pw: str
     port: int = 1433
     db: str = 'master'
-    # todo вынесите в настройки
-    user: str = 's1_SQL'
-    pw: str = '5felcy8yes'
 
     def get_connection_string(self):
         return ';'.join([self.driver, f'SERVER={self.server}', f'PORT={self.port}', f'DATABASE={self.db}',
@@ -130,3 +129,14 @@ def get_connection(db: SQLServer):
     finally:
         if base_conn:
             base_conn.close()
+
+
+def get_nextset(cursor):
+    next_set = cursor.nextset()
+    if not next_set:
+        return
+
+    _, msg = cursor.messages[0]
+    msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
+    logger.info(msg)
+    return msg

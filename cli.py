@@ -7,6 +7,7 @@ import pyodbc
 
 from services.rac_tools import get_infobase, BDInvalidName
 from services.sql_tools import BackupFilesError, SQLServer, get_backup_path, restore_db, get_connection, BackupType
+from settings import settings
 
 logger = logging.getLogger('db_restore')
 
@@ -33,13 +34,13 @@ def main():
 
     try:
         logger.debug(args.source_db)
-        source_infobase = get_infobase(args.source_db)
+        source_infobase = get_infobase(args.source_db, settings.ib_username, settings.ib_user_pwd)
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return
 
     try:
-        receiver_infobase = get_infobase(args.receiver_db)
+        receiver_infobase = get_infobase(args.receiver_db, settings.ib_username, settings.ib_user_pwd)
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return

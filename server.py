@@ -9,6 +9,7 @@ from aiohttp import web
 from anyio import create_task_group
 
 from services.service import async_do_restore
+from settings import settings
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -49,7 +50,7 @@ async def websocket_handler(request):
                 msg = json.loads(msg.data)
                 if msg['type'] == 'restore_db':
                     async with create_task_group() as tg:
-                        tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'])
+                        tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'], settings)
                         tg.start_soon(send_msg, messages_queue, ws)
 
         elif msg.type == aiohttp.WSMsgType.ERROR:

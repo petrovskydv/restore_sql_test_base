@@ -1,9 +1,9 @@
 import logging
 import re
 import subprocess as sub
+from typing import Dict
 
 from pydantic import BaseModel, Field
-from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -115,30 +115,10 @@ def parse_infobase_connection_string(conn_string):
     return server_name, infobase_name
 
 
-def get_infobase(con_str):
+def get_infobase(con_str, ib_username, ib_user_pwd):
     host_name, infobase_name = parse_infobase_connection_string(con_str)
     cluster = Cluster1C(host_name, RacClient())
-    # todo вынести в настройки
-    username = 'Петровский Денис'
-    user_pwd = '0850'
-    return cluster.get_infobase(infobase_name.lower(), username, user_pwd)
+    return cluster.get_infobase(infobase_name.lower(), ib_username, ib_user_pwd)
 
 
-def main():
-    logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    con_str = 'Srvr="pg-test-01";Ref="test_uppuusv";'
-    try:
-        infobase = get_infobase(con_str)
-        print(infobase)
-        print(infobase.db_server, infobase.db_name)
-    except ChildProcessError as e:
-        print(e)
-    except BDInvalidName as e:
-        print(e)
-    except FileNotFoundError as e:
-        print(e)
-
-
-if __name__ == '__main__':
-    main()

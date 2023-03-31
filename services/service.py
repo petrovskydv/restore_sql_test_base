@@ -7,13 +7,13 @@ from anyio import to_thread
 from services.rac_tools import get_infobase, BDInvalidName
 from services.sql_tools import (
     get_connection, SQLServer, get_backup_path, BackupType, BackupFilesError,
-    prepare_sql_query_for_restore
+    prepare_sql_query_for_restore, get_nextset
 )
 
 logger = logging.getLogger(__name__)
 
 
-async def async_do_restore(source_path, messages_queue, target_path):
+async def async_do_restore(source_path, messages_queue, target_path, settings):
     messages_queue.put_nowait('START!')
     logger.debug('submit message START!')
     await asyncio.sleep(0)
@@ -21,7 +21,8 @@ async def async_do_restore(source_path, messages_queue, target_path):
     messages_queue.put_nowait('Получение информации о базе источнике')
     await asyncio.sleep(0)
     try:
-        source_infobase = await to_thread.run_sync(get_infobase, source_path)
+        source_infobase = await to_thread.run_sync(get_infobase, source_path, settings.ib_username,
+                                                   settings.ib_user_pwd)
         messages_queue.put_nowait(f'база источник: {source_infobase}')
         logger.debug(f'submit message база источник: {source_infobase}')
         await asyncio.sleep(0)
@@ -35,7 +36,8 @@ async def async_do_restore(source_path, messages_queue, target_path):
     messages_queue.put_nowait('Получение информации о базе приемнике')
     await asyncio.sleep(0)
     try:
-        receiver_infobase = await to_thread.run_sync(get_infobase, target_path)
+        receiver_infobase = await to_thread.run_sync(get_infobase, target_path, settings.ib_username,
+                                                     settings.ib_user_pwd)
         messages_queue.put_nowait(f'база приемник: {receiver_infobase}')
         logger.debug(f'submit message база приемник: {receiver_infobase}')
         await asyncio.sleep(0)
@@ -51,7 +53,9 @@ async def async_do_restore(source_path, messages_queue, target_path):
         logger.debug(f'submit message Получение путей файлов бекапа для базы: {source_infobase.db_name}')
         await asyncio.sleep(0)
 
-        with get_connection(SQLServer(server=source_infobase.db_server)) as source_conn:
+        source_sql_server = SQLServer(server=source_infobase.db_server, user=settings.sql_user,
+                                      pw=settings.sql_user_pwd)
+        with get_connection(source_sql_server) as source_conn:
             full_backup_path, full_backup_date = await to_thread.run_sync(
                 get_backup_path,
                 source_conn,
@@ -80,7 +84,9 @@ async def async_do_restore(source_path, messages_queue, target_path):
         return
 
     try:
-        with get_connection(SQLServer(server=receiver_infobase.db_server)) as receiver_conn:
+        target_sql_server = SQLServer(server=receiver_infobase.db_server, user=settings.sql_user,
+                                      pw=settings.sql_user_pwd)
+        with get_connection(target_sql_server) as receiver_conn:
             script = await to_thread.run_sync(
                 prepare_sql_query_for_restore,
                 receiver_conn,
@@ -122,14 +128,3 @@ async def async_do_restore(source_path, messages_queue, target_path):
 
     messages_queue.put_nowait('DONE!')
     logger.info('DONE!')
-
-
-def get_nextset(cursor):
-    next_set = cursor.nextset()
-    if not next_set:
-        return
-
-    _, msg = cursor.messages[0]
-    msg = msg.replace('[Microsoft][ODBC Driver 17 for SQL Server][SQL Server]', '')
-    logger.info(msg)
-    return msg
