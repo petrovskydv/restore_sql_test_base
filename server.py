@@ -5,9 +5,11 @@ from asyncio import Queue
 from pathlib import Path
 
 import aiohttp
+import pyodbc
 from aiohttp import web
 from anyio import create_task_group
 
+from services.exceptions import BDInvalidName, BackupFilesError
 from services.service import async_do_restore
 from settings import settings
 
@@ -43,18 +45,47 @@ async def websocket_handler(request):
 
     async for msg in ws:
         logger.debug(f'{msg=}')
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            if msg.data == 'close':
-                await ws.close()
-            else:
-                msg = json.loads(msg.data)
-                if msg['type'] == 'restore_db':
-                    async with create_task_group() as tg:
-                        tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'], settings)
-                        tg.start_soon(send_msg, messages_queue, ws)
-
-        elif msg.type == aiohttp.WSMsgType.ERROR:
+        if msg.type == aiohttp.WSMsgType.ERROR:
             logger.error('ws connection closed with exception %s' % ws.exception())
+            continue
+
+
+        if msg.data == 'close':
+            await ws.close()
+            continue
+
+        msg = json.loads(msg.data)
+        if msg['type'] != 'restore_db':
+            continue
+        try:
+            async with create_task_group() as tg:
+                tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'], settings)
+                tg.start_soon(send_msg, messages_queue, ws)
+        except (ChildProcessError, BDInvalidName, FileNotFoundError, ValueError) as e:
+            await ws.send_str(str(e))
+            await ws.send_str('Операция прервана!')
+            logger.error(e)
+        except pyodbc.OperationalError:
+            msg = 'Сервер не найден или недоступен. Операция прервана!'
+            await ws.send_str(msg)
+            await ws.send_str('Операция прервана!')
+            logger.error(msg)
+        except BackupFilesError:
+            msg = 'Не удалось найти пути файлов бекапов. Операция прервана!'
+            await ws.send_str(msg)
+            await ws.send_str('Операция прервана!')
+            logger.error(msg)
+        except pyodbc.ProgrammingError:
+            msg = 'БД приемник недоступна или не найдена. Операция прервана!'
+            await ws.send_str(msg)
+            await ws.send_str('Операция прервана!')
+            logger.error(msg)
+        except FileNotFoundError:
+            msg = 'Файлы бекапа не найдены на диске. Операция прервана!'
+            await ws.send_str(msg)
+            await ws.send_str('Операция прервана!')
+            logger.error(msg)
+
 
     logger.debug('websocket connection closed')
     return ws

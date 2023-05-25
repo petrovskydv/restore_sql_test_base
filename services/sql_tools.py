@@ -6,11 +6,9 @@ from enum import Enum
 import pyodbc
 from pydantic import BaseModel
 
+from services.exceptions import BackupFilesError
+
 logger = logging.getLogger(__name__)
-
-
-class BackupFilesError(Exception):
-    pass
 
 
 class BackupType(Enum):

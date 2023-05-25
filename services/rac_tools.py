@@ -5,11 +5,9 @@ from typing import Dict
 
 from pydantic import BaseModel, Field
 
+from services.exceptions import BDInvalidName
+
 logger = logging.getLogger(__name__)
-
-
-class BDInvalidName(Exception):
-    pass
 
 
 class InfoBase(BaseModel):
