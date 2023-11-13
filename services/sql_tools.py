@@ -39,7 +39,7 @@ def get_backup_path(conn, source_db, backup_type=BackupType.full, backup_date=da
 SELECT TOP (1) bmf.physical_device_name, bs.backup_finish_date
 FROM   msdb.dbo.backupset AS bs LEFT OUTER JOIN msdb.dbo.backupmediafamily AS bmf ON bs.media_set_id = bmf.media_set_id
 WHERE  (bs.database_name = N'{source_db}') AND (bs.type = '{backup_type.value}')
-AND (bs.backup_finish_date > CONVERT(DATETIME, '{backup_start_date}', 102))
+AND (bs.backup_finish_date > CONVERT(DATETIME, '{backup_start_date}', 102)) AND bs.is_snapshot=0
 ORDER BY bs.backup_finish_date DESC'''
 
     logger.debug(f'execute query {query}')
