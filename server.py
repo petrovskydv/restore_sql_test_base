@@ -49,7 +49,6 @@ async def websocket_handler(request):
             logger.error('ws connection closed with exception %s' % ws.exception())
             continue
 
-
         if msg.data == 'close':
             await ws.close()
             continue
@@ -59,7 +58,7 @@ async def websocket_handler(request):
             continue
         try:
             async with create_task_group() as tg:
-                tg.start_soon(async_do_restore, msg['source'], messages_queue, msg['target'], settings)
+                tg.start_soon(async_do_restore, messages_queue, msg['source'], msg['target'], settings)
                 tg.start_soon(send_msg, messages_queue, ws)
         except (ChildProcessError, BDInvalidName, FileNotFoundError, ValueError) as e:
             await ws.send_str(str(e))
@@ -85,7 +84,6 @@ async def websocket_handler(request):
             await ws.send_str(msg)
             await ws.send_str('Операция прервана!')
             logger.error(msg)
-
 
     logger.debug('websocket connection closed')
     return ws
