@@ -16,27 +16,32 @@ from services.sql_tools import (
 logger = logging.getLogger(__name__)
 
 
-async def async_do_restore(source_path, messages_queue, target_path, settings):
-    messages_queue.put_nowait('START!')
-    logger.debug('submit message START!')
+def put_log_msg(queue, msg):
+    queue.put_nowait(msg)
+    logger.debug(f'submit message: {msg}')
+
+
+async def async_do_restore(messages_queue, source_path, target_path, settings):
+    log_msg = 'START!'
+    put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
     messages_queue.put_nowait('Получение информации о базе источнике')
     await asyncio.sleep(0)
     source_infobase = await to_thread.run_sync(get_infobase, source_path, settings.ib_username, settings.ib_user_pwd)
-    messages_queue.put_nowait(f'база источник: {source_infobase}')
-    logger.debug(f'submit message база источник: {source_infobase}')
+    log_msg = f'база источник: {source_infobase}'
+    put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
     messages_queue.put_nowait('Получение информации о базе приемнике')
     await asyncio.sleep(0)
     receiver_infobase = await to_thread.run_sync(get_infobase, target_path, settings.ib_username, settings.ib_user_pwd)
-    messages_queue.put_nowait(f'база приемник: {receiver_infobase}')
-    logger.debug(f'submit message база приемник: {receiver_infobase}')
+    log_msg = f'база приемник: {receiver_infobase}'
+    put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
-    messages_queue.put_nowait(f'Получение путей файлов бекапа для базы: {source_infobase.db_name}')
-    logger.debug(f'submit message Получение путей файлов бекапа для базы: {source_infobase.db_name}')
+    log_msg = f'Получение путей файлов бекапа для базы: {source_infobase.db_name}'
+    put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
     source_sql_server = SQLServer(server=source_infobase.db_server, user=settings.sql_user, pw=settings.sql_user_pwd)
@@ -67,8 +72,9 @@ async def async_do_restore(source_path, messages_queue, target_path, settings):
             receiver_infobase.db_name,
             diff_backup_path,
         )
-        messages_queue.put_nowait(f'Начало восстановления базы: {receiver_infobase.db_name}')
-        logger.debug(f'submit message Начало восстановления базы: {receiver_infobase.db_name}')
+        log_msg = f'Начало восстановления базы: {receiver_infobase.db_name}'
+        put_log_msg(messages_queue, log_msg)
+
         await asyncio.sleep(0)
 
         cursor = receiver_conn.cursor()
@@ -84,5 +90,5 @@ async def async_do_restore(source_path, messages_queue, target_path, settings):
 
     await asyncio.sleep(0)
 
-    messages_queue.put_nowait('DONE!')
-    logger.info('DONE!')
+    log_msg = 'DONE!'
+    put_log_msg(messages_queue, log_msg)
