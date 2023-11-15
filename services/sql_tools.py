@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 from contextlib import contextmanager
 from enum import Enum
 
@@ -93,6 +94,8 @@ def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, di
     data_file, log_file = get_files_names(conn, restored_base_name)
     data_file_name, data_file_path = data_file
     log_file_name, log_file_path = log_file
+    data_file_path = get_right_path(data_file_path, restored_base_name)
+    log_file_path = get_right_path(log_file_path, f'{restored_base_name}_log')
 
     no_recovery = 'NORECOVERY,' if dif_backup_path else ''
 
@@ -114,6 +117,12 @@ def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, di
 
     logger.debug(script)
     return script
+
+
+def get_right_path(data_file_path, restored_base_name):
+    file_path, _ = os.path.split(data_file_path)
+    _, ext = os.path.splitext(data_file_path)
+    return os.path.join(file_path, f'{restored_base_name}{ext}')
 
 
 @contextmanager
