@@ -113,7 +113,7 @@ def parse_infobase_connection_string(conn_string):
     return server_name, infobase_name
 
 
-def get_infobase(con_str, ib_username, ib_user_pwd):
+def get_infobase(rac_client, con_str, ib_username, ib_user_pwd):
     host_name, infobase_name = parse_infobase_connection_string(con_str)
-    cluster = Cluster1C(host_name, RacClient())
+    cluster = Cluster1C(host_name, rac_client)
     return cluster.get_infobase(infobase_name.lower(), ib_username, ib_user_pwd)

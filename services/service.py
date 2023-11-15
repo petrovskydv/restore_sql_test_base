@@ -3,7 +3,7 @@ import logging
 
 from anyio import to_thread
 
-from services.rac_tools import get_infobase
+from services.rac_tools import get_infobase, RacClient
 from services.sql_tools import (
     SQLServer,
     BackupType,
@@ -28,14 +28,18 @@ async def async_do_restore(messages_queue, source_path, target_path, settings):
 
     messages_queue.put_nowait('Получение информации о базе источнике')
     await asyncio.sleep(0)
-    source_infobase = await to_thread.run_sync(get_infobase, source_path, settings.ib_username, settings.ib_user_pwd)
+
+    rac_client = RacClient(exe_path=settings.rac_path)
+    source_infobase = await to_thread.run_sync(get_infobase, rac_client, source_path, settings.ib_username,
+                                               settings.ib_user_pwd)
     log_msg = f'база источник: {source_infobase}'
     put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
     messages_queue.put_nowait('Получение информации о базе приемнике')
     await asyncio.sleep(0)
-    receiver_infobase = await to_thread.run_sync(get_infobase, target_path, settings.ib_username, settings.ib_user_pwd)
+    receiver_infobase = await to_thread.run_sync(get_infobase, rac_client, target_path, settings.ib_username,
+                                                 settings.ib_user_pwd)
     log_msg = f'база приемник: {receiver_infobase}'
     put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
