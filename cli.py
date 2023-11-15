@@ -5,7 +5,7 @@ import os
 
 import pyodbc
 
-from services.rac_tools import get_infobase
+from services.rac_tools import get_infobase, RacClient
 from services.exceptions import BDInvalidName, BackupFilesError
 from services.sql_tools import SQLServer, get_backup_path, restore_db, get_connection, BackupType
 from settings import settings
@@ -32,16 +32,17 @@ def main():
 
     logger.setLevel(args.verbose)
     logging.getLogger('rac_tools').setLevel(args.verbose)
+    rac_client = RacClient(exe_path=settings.rac_path)
 
     try:
         logger.debug(args.source_db)
-        source_infobase = get_infobase(args.source_db, settings.ib_username, settings.ib_user_pwd)
+        source_infobase = get_infobase(rac_client, args.source_db, settings.ib_username, settings.ib_user_pwd)
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return
 
     try:
-        receiver_infobase = get_infobase(args.receiver_db, settings.ib_username, settings.ib_user_pwd)
+        receiver_infobase = get_infobase(rac_client, args.receiver_db, settings.ib_username, settings.ib_user_pwd)
     except (ChildProcessError, BDInvalidName, FileNotFoundError) as e:
         logger.error(e)
         return
