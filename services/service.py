@@ -48,6 +48,7 @@ async def async_do_restore(messages_queue, source_path, target_path, settings):
     put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
+    diff_backup_date = None
     source_sql_server = SQLServer(server=source_infobase.db_server, user=settings.sql_user, pw=settings.sql_user_pwd)
     with get_connection(source_sql_server) as source_conn:
         full_backup_path, full_backup_date = await to_thread.run_sync(
@@ -55,17 +56,20 @@ async def async_do_restore(messages_queue, source_path, target_path, settings):
             source_conn,
             source_infobase.db_name
         )
-        diff_backup_path, _ = await to_thread.run_sync(
+        diff_backup_path, diff_backup_date = await to_thread.run_sync(
             get_backup_path,
             source_conn,
             source_infobase.db_name,
             BackupType.diff,
             full_backup_date
         )
-        logger.debug(f'{full_backup_path=}')
-        logger.debug(f'{diff_backup_path=}')
-        # todo добавить вывод даты и времени когда был сделан этот бекап
+        logger.debug(f'{full_backup_path=} {full_backup_date=}')
+        logger.debug(f'{diff_backup_path=} {diff_backup_date=}')
     await asyncio.sleep(0)
+
+    backup_date = max(full_backup_date, diff_backup_date)
+    log_msg = f'\nБаза будет восстановлена на  {backup_date.strftime("%H:%M:%S %d.%m.%Y")}\n'
+    put_log_msg(messages_queue, log_msg)
 
     target_sql_server = SQLServer(server=receiver_infobase.db_server, user=settings.sql_user, pw=settings.sql_user_pwd)
     with get_connection(target_sql_server) as receiver_conn:
@@ -76,7 +80,7 @@ async def async_do_restore(messages_queue, source_path, target_path, settings):
             receiver_infobase.db_name,
             diff_backup_path,
         )
-        log_msg = f'Начало восстановления базы: {receiver_infobase.db_name}'
+        log_msg = f'Начало восстановления {source_infobase.db_name} ===> {receiver_infobase.db_name}'
         put_log_msg(messages_queue, log_msg)
 
         await asyncio.sleep(0)
