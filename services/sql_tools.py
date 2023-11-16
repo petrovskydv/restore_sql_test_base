@@ -97,23 +97,25 @@ def prepare_sql_query_for_restore(conn, full_backup_path, restored_base_name, di
     data_file_path = get_right_path(data_file_path, restored_base_name)
     log_file_path = get_right_path(log_file_path, f'{restored_base_name}_log')
 
-    no_recovery = 'NORECOVERY,' if dif_backup_path else ''
-
-    script = f'''
-    USE [master]
-    ALTER DATABASE [{restored_base_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE
-    RESTORE DATABASE [{restored_base_name}] FROM
-    DISK = N'{full_backup_path}' WITH  FILE = 1,
-    MOVE N'{data_file_name}' TO N'{data_file_path}',
-    MOVE N'{log_file_name}' TO N'{log_file_path}',
-    {no_recovery}  NOUNLOAD, REPLACE, STATS = 5
-    '''
-
-    diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' " \
-                  f"WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
+    no_recovery = ''
+    diff_script = ''
 
     if dif_backup_path:
-        script = f'{script}{diff_script}'
+        no_recovery = 'NORECOVERY,'
+        diff_script = f"RESTORE DATABASE [{restored_base_name}] FROM  DISK = N'{dif_backup_path}' " \
+                      f"WITH  FILE = 1,  NOUNLOAD,  STATS = 5"
+
+    script = f'''
+        USE [master]
+        ALTER DATABASE [{restored_base_name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE
+        RESTORE DATABASE [{restored_base_name}] FROM
+        DISK = N'{full_backup_path}' WITH  FILE = 1,
+        MOVE N'{data_file_name}' TO N'{data_file_path}',
+        MOVE N'{log_file_name}' TO N'{log_file_path}',
+        {no_recovery}  NOUNLOAD, REPLACE, STATS = 5
+        '''
+
+    script = f'{script}{diff_script}'
 
     logger.debug(script)
     return script
