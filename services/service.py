@@ -1,6 +1,9 @@
 import asyncio
+import datetime
 import logging
+import os.path
 
+import dateutil.parser as dt_parser
 from anyio import to_thread
 
 from services.rac_tools import get_infobase, RacClient
@@ -21,7 +24,7 @@ def put_log_msg(queue, msg):
     logger.debug(f'submit message: {msg}')
 
 
-async def async_do_restore(messages_queue, source_path, target_path, settings):
+async def async_do_restore(messages_queue, source_path, target_path, raw_backup_date, settings):
     log_msg = 'START!'
     put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
@@ -48,21 +51,28 @@ async def async_do_restore(messages_queue, source_path, target_path, settings):
     put_log_msg(messages_queue, log_msg)
     await asyncio.sleep(0)
 
+    backup_date = dt_parser.parse(raw_backup_date)
     diff_backup_date = None
     source_sql_server = SQLServer(server=source_infobase.db_server, user=settings.sql_user, pw=settings.sql_user_pwd)
     with get_connection(source_sql_server) as source_conn:
         full_backup_path, full_backup_date = await to_thread.run_sync(
             get_backup_path,
             source_conn,
-            source_infobase.db_name
+            source_infobase.db_name,
+            BackupType.full,
+            backup_date
         )
         diff_backup_path, diff_backup_date = await to_thread.run_sync(
             get_backup_path,
             source_conn,
             source_infobase.db_name,
             BackupType.diff,
-            full_backup_date
+            backup_date
         )
+        if not os.path.exists(diff_backup_path):
+            logger.debug('Нет файла диф бекапа')
+            diff_backup_path = None
+            diff_backup_date = datetime.datetime(2000,1,1)
         logger.debug(f'{full_backup_path=} {full_backup_date=}')
         logger.debug(f'{diff_backup_path=} {diff_backup_date=}')
     await asyncio.sleep(0)

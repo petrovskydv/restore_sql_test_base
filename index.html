@@ -2,20 +2,28 @@
 <!DOCTYPE html>
 <html>
 <head>
-<!--    <meta charset="utf-8"/>-->
-    <title>Restore database</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+  <!--    <meta charset="utf-8"/>-->
+  <title>Restore database</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 </head>
 <body>
 <div class="container">
   <div class="mb-3">
     <label for="source" class="form-label">Source</label>
-    <input type="text" class="form-control" id="source" placeholder='Srvr="pg-1c-01";Ref="image";'>
+    <input type="text" class="form-control" id="source" placeholder='Srvr="pg-1c-01";Ref="image";'
+           value='Srvr="pg-1c-01";Ref="stil_bu";'>
   </div>
 
   <div class="mb-3">
     <label for="target" class="form-label">Target</label>
-    <input type="text" class="form-control" id="target" placeholder='Srvr="PG-TEST-01";Ref="test_image";'>
+    <input type="text" class="form-control" id="target" placeholder='Srvr="PG-TEST-01";Ref="test_image";'
+           value='Srvr="pg-test-01";Ref="test_stil_bu";'>
+  </div>
+
+  <div class="mb-3">
+    <label for="date">Date time: </label>
+    <input type="datetime-local" id="current_date_time_block" name="date"/>
   </div>
 
   <div class="mb-3">
@@ -28,42 +36,50 @@
   </div>
 </div>
 
-
-
 </form>
-    <script>
-
-        const chatSocket = new WebSocket(
-            'ws://'
-            + window.location.host
-            + '/ws'
-        );
-
-        chatSocket.onmessage = function(e) {
-            const data = e.data;
-            document.querySelector('#chat-log').value += (data + '\n');
-        };
-
-        chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
-        };
-
-        const StartButton = document.querySelector('#chat-message-submit')
-
-        StartButton.onclick = function(e) {
-            const SourceDom = document.querySelector('#source');
-            const TargetDom = document.querySelector('#target');
-            const message = {
-              'type': 'restore_db',
-              'source': SourceDom.value,
-              'target': TargetDom.value
-            }
 
 
-            chatSocket.send(JSON.stringify(message));
-            document.getElementById('chat-message-submit').disabled = true;
-        };
-    </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script type="text/javascript">
+  var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+  var localISOTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+  document.getElementById('current_date_time_block').value = localISOTime;
+</script>
+
+
+<script>
+
+  const chatSocket = new WebSocket(
+          'ws://'
+          + window.location.host
+          + '/ws'
+  );
+
+  chatSocket.onmessage = function (e) {
+    const data = e.data;
+    document.querySelector('#chat-log').value += (data + '\n');
+  };
+
+  chatSocket.onclose = function (e) {
+    console.error('Chat socket closed unexpectedly');
+  };
+
+  const StartButton = document.querySelector('#chat-message-submit')
+
+  StartButton.onclick = function (e) {
+    const SourceDom = document.querySelector('#source');
+    const TargetDom = document.querySelector('#target');
+    const BackupDate = document.querySelector('#current_date_time_block')
+    const message = {
+      'type': 'restore_db',
+      'source': SourceDom.value,
+      'target': TargetDom.value,
+      'backup_date': BackupDate.value
+    }
+
+    chatSocket.send(JSON.stringify(message));
+    StartButton.disabled = true;
+  };
+</script>
+
 </body>
 </html>

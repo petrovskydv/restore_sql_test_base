@@ -30,7 +30,7 @@ async def send_msg(messages_queue, ws):
     while True:
         try:
             message = await messages_queue.get()
-            logger.debug(f'send msg to browser {message}')
+            # logger.debug(f'send msg to browser {message}')
             await ws.send_str(message)
         except ConnectionResetError:
             logger.error('ConnectionResetError')
@@ -57,8 +57,16 @@ async def websocket_handler(request):
         if msg['type'] != 'restore_db':
             continue
         try:
+            print(msg)
             async with create_task_group() as tg:
-                tg.start_soon(async_do_restore, messages_queue, msg['source'], msg['target'], settings)
+                tg.start_soon(
+                    async_do_restore,
+                    messages_queue,
+                    msg['source'],
+                    msg['target'],
+                    msg['backup_date'],
+                    settings
+                )
                 tg.start_soon(send_msg, messages_queue, ws)
         except (ChildProcessError, BDInvalidName, FileNotFoundError, ValueError) as e:
             msg = f'Что-то пошло не так \n {str(e)}'
@@ -71,7 +79,7 @@ async def websocket_handler(request):
             msg = 'Не удалось найти пути файлов бекапов. Операция прервана!'
             await log_send_msg(msg, ws)
         except pyodbc.ProgrammingError:
-            msg = 'БД приемник недоступна или не найдена. Операция прервана!'
+            msg = 'БД приемник недоступна. Операция прервана!'
             await log_send_msg(msg, ws)
         except FileNotFoundError:
             msg = 'Файлы бекапа не найдены на диске. Операция прервана!'
