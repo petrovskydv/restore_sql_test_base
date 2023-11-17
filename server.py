@@ -11,7 +11,7 @@ from anyio import create_task_group
 
 from services.exceptions import BDInvalidName, BackupFilesError
 from services.service import async_do_restore
-from settings import settings
+from settings import Settings
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -40,6 +40,8 @@ async def websocket_handler(request):
     logger.debug('start websocket')
     ws = web.WebSocketResponse()
     await ws.prepare(request)
+
+    settings = Settings(_env_file=os.path.join(BASE_DIR, '.env'))
 
     messages_queue = Queue()
 
