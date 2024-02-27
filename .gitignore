@@ -2,3 +2,9 @@
 /.env
 /env
 *.txt
+services/__pycache__/__init__.cpython-38.pyc
+services/__pycache__/exceptions.cpython-38.pyc
+services/__pycache__/rac_tools.cpython-38.pyc
+services/__pycache__/service.cpython-38.pyc
+services/__pycache__/sql_tools.cpython-38.pyc
+__pycache__/settings.cpython-38.pyc

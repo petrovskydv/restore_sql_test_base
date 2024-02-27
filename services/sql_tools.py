@@ -51,6 +51,8 @@ ORDER BY bs.backup_finish_date DESC'''
     if not response and backup_type == BackupType.full:
         raise BackupFilesError
 
+    logger.debug(response)    
+
     backup_path, backup_finish_date = response
     logger.debug(f'backup_path {backup_type}: {backup_path}')
     return backup_path, backup_finish_date
